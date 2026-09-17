@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en-US" class="dark" style="color-scheme: dark;">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>ChatGPT</title>
+  <link rel="icon" href="https://chatgpt.com/cdn/assets/favicon-l4nq08hd.svg" type="image/svg+xml" />
+  <link rel="icon" href="https://chatgpt.com/favicon.ico" sizes="any" />
+  <style>
+    :root {
+      --bg: #000000;
+      --surface: #2f2f2f;
+      --text: #ececec;
+      --text-muted: #8e8e8e;
+      --text-dim: #6b6b6b;
+      --blue: #3b82f6;
+      --blue-hover: #2563eb;
+      --rail-width: 52px;
+      --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, textarea { font: inherit; color: inherit; border: none; background: none; outline: none; cursor: pointer; }
+    svg { display: block; flex-shrink: 0; }
+    a { color: inherit; text-decoration: none; }
+
+    .app { display: flex; height: 100%; width: 100%; }
+
+    /* Left rail */
+    .rail {
+      width: var(--rail-width);
+      background: var(--bg);
+      border-right: 1px solid #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px 0 12px;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .rail-top {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      width: 100%;
+    }
+    .rail-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      color: #c5c5c5;
+      transition: background 0.15s, color 0.15s;
+    }
+    .rail-btn:hover { background: #1f1f1f; color: #fff; }
+    .rail-logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 6px;
+      color: #fff;
+      text-decoration: none;
+    }
+    .rail-logo:hover { background: #1f1f1f; color: #fff; }
+    .rail-spacer { flex: 1; }
+    .rail-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--blue);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      display: grid;
+      place-items: center;
+    }
+
+    /* Main */
+    .stage {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+    }
+
+    .topbar {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 0 16px;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .topbar-link {
+      font-size: 13px;
+      color: #60a5fa;
+      padding: 6px 8px;
+      border-radius: 8px;
+    }
+    .topbar-link:hover { text-decoration: underline; }
+    .topbar-howto {
+      font-size: 13px;
+      color: #c5c5c5;
+      padding: 6px 10px;
+      border-radius: 8px;
+      transition: background 0.15s, color 0.15s;
+    }
+    .topbar-howto:hover { background: #1f1f1f; color: #fff; }
+    .topbar-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: #c5c5c5;
+    }
+    .topbar-icon:hover { background: #1f1f1f; color: #fff; }
+
+    .scroll-root {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      scrollbar-width: thin;
+      scrollbar-color: #333 transparent;
+    }
+
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px 8px;
+      text-align: center;
+    }
+    .greeting {
+      font-size: clamp(22px, 3.2vw, 28px);
+      font-weight: 400;
+      letter-spacing: -0.01em;
+      color: #f5f5f5;
+      line-height: 1.35;
+    }
+
+    .messages {
+      display: none;
+      flex-direction: column;
+      gap: 24px;
+      width: 100%;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 28px 16px 56px;
+    }
+    .messages.visible { display: flex; }
+    .empty-state.hidden { display: none; }
+
+    /* No avatars – text only, closer to original empty→chat feel */
+    .msg {
+      font-size: 15.5px;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--text);
+    }
+    .msg.user {
+      color: #f0f0f0;
+      background: #2f2f2f;
+      border-radius: 18px;
+      padding: 12px 16px;
+      align-self: flex-end;
+      max-width: 85%;
+    }
+    .msg.assistant {
+      color: var(--text);
+      padding: 4px 2px;
+    }
+    .msg-status {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+    .msg-status a {
+      color: #60a5fa;
+      text-decoration: underline;
+    }
+
+    /* Composer */
+    .composer-wrap {
+      flex-shrink: 0;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 16px 20px;
+    }
+    .composer {
+      width: 100%;
+      max-width: 720px;
+      background: var(--surface);
+      border-radius: 28px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 8px 8px 10px;
+      min-height: 52px;
+      border: 1px solid transparent;
+      transition: border-color 0.15s;
+    }
+    .composer:focus-within { border-color: #444; }
+
+    .composer-plus {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #c5c5c5;
+      flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .composer-plus:hover { background: #404040; color: #fff; }
+
+    .composer-textarea {
+      flex: 1;
+      resize: none;
+      min-height: 24px;
+      max-height: 160px;
+      padding: 6px 4px;
+      background: transparent;
+      color: var(--text);
+      font-size: 15.5px;
+      line-height: 1.5;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      cursor: text;
+    }
+    .composer-textarea::placeholder { color: var(--text-muted); }
+
+    .composer-right {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .think-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 13.5px;
+      color: #c5c5c5;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .think-btn:hover { background: #404040; color: #fff; }
+
+    .btn-send {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--blue);
+      color: #fff;
+      flex-shrink: 0;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .btn-send:disabled {
+      background: #3a3a3a;
+      color: #666;
+      cursor: default;
+    }
+    .btn-send:not(:disabled):hover { background: var(--blue-hover); }
+
+    .disclaimer {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--text-dim);
+      text-align: center;
+    }
+
+    @media (max-width: 480px) {
+      .rail { width: 44px; }
+      .think-btn span { display: none; }
+      .topbar-howto { font-size: 12px; padding: 6px 8px; }
+    }
+
+    /* Builder #main */
+    .builder {
+      display: none;
+      position: fixed; inset: 0; z-index: 100;
+      background: #0a0a0a;
+      flex-direction: column; align-items: center; justify-content: center;
+      padding: 24px 16px;
+    }
+    .builder.visible { display: flex; }
+    .builder-card {
+      width: 100%; max-width: 500px;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 16px;
+      padding: 28px 24px;
+    }
+    .builder-card h2 { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+    .builder-card > p { font-size: 13.5px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.45; }
+    .builder-textarea {
+      width: 100%; min-height: 110px; max-height: 260px; resize: vertical;
+      padding: 12px 14px; border-radius: 12px;
+      background: #0d0d0d; border: 1px solid #2a2a2a;
+      color: var(--text); font-size: 14.5px; line-height: 1.5;
+      margin-bottom: 14px; cursor: text;
+    }
+    .builder-textarea:focus { border-color: #444; }
+    .builder-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .builder-btn {
+      padding: 9px 16px; border-radius: 10px; font-size: 13.5px; font-weight: 500;
+    }
+    .builder-btn.primary { background: #fff; color: #0d0d0d; }
+    .builder-btn.primary:hover { opacity: 0.9; }
+    .builder-btn.secondary {
+      background: transparent; border: 1px solid #333; color: var(--text);
+    }
+    .builder-btn.secondary:hover { background: #222; }
+    .builder-link-box {
+      display: none; margin-top: 14px; padding: 11px 13px;
+      background: #0d0d0d; border-radius: 10px; border: 1px solid #2a2a2a;
+      font-size: 12.5px; word-break: break-all; color: #a0a0a0;
+      line-height: 1.45; cursor: pointer;
+    }
+    .builder-link-box.visible { display: block; }
+    .builder-link-box:hover { border-color: #444; }
+    .builder-copied {
+      display: none; margin-top: 8px; font-size: 12.5px; color: #10a37f; font-weight: 500;
+    }
+    .builder-copied.visible { display: block; }
+    .builder-hint {
+      margin-top: 16px; font-size: 12px; color: var(--text-dim); line-height: 1.45;
+    }
+    .builder-hint code {
+      background: #0d0d0d; padding: 1px 5px; border-radius: 4px; font-size: 11.5px;
+    }
+    .builder-back {
+      margin-top: 18px;
+      font-size: 13px;
+      color: #60a5fa;
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+    .builder-back:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="builder" id="builder">
+    <div class="builder-card">
+      <h2>How to use</h2>
+      <p>Type the message that should auto-type into the chat box. You’ll get a shareable prank link. When opened, it types the text and opens the real ChatGPT with that question.</p>
+      <textarea class="builder-textarea" id="builderInput" placeholder="e.g. Write a short poem about cats…"></textarea>
+      <div class="builder-actions">
+        <button class="builder-btn primary" id="generateBtn" type="button">Generate link</button>
+        <button class="builder-btn secondary" id="previewBtn" type="button">Open preview</button>
+      </div>
+      <div class="builder-link-box" id="linkBox" title="Click to copy"></div>
+      <div class="builder-copied" id="copiedMsg">Copied to clipboard</div>
+      <p class="builder-hint">
+        Open this page with <code>#main</code> (or use the How to use button) to build links.<br>
+        Share links look like <code>#text:…</code> — they type into the box, then redirect to<br>
+        <code>https://chatgpt.com/?q=…</code> so ChatGPT asks the same question.
+      </p>
+      <button class="builder-back" id="builderBack" type="button">← Back to chat</button>
+    </div>
+  </div>
+
+  <div class="app" id="app">
+    <nav class="rail" aria-label="Sidebar">
+      <div class="rail-top">
+        <!-- GitHub project link -->
+        <a class="rail-logo" href="https://github.com/you-in-you/Let-me-ask-AI-for-you" target="_blank" rel="noopener noreferrer" title="View on GitHub" aria-label="GitHub repository">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.726-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.757-1.333-1.757-1.09-.745.083-.73.083-.73 1.205.085 1.84 1.237 1.84 1.237 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.305.76-1.605-2.665-.303-5.467-1.333-5.467-5.93 0-1.31.468-2.38 1.236-3.22-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.3 1.23.96-.267 1.98-.4 3-.405 1.02.005 2.04.138 3 .405 2.29-1.552 3.297-1.23 3.297-1.23.653 1.652.242 2.873.12 3.176.77.84 1.235 1.91 1.235 3.22 0 4.61-2.807 5.624-5.48 5.92.43.372.823 1.102.823 2.222 0 1.606-.015 2.898-.015 3.293 0 .32.216.694.825.576C20.565 21.796 24 17.297 24 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+        </a>
+
+        <button class="rail-btn" type="button" title="New chat" id="railNewChat" aria-label="New chat">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+          </svg>
+        </button>
+        <button class="rail-btn" type="button" title="Library" aria-label="Library">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+          </svg>
+        </button>
+        <button class="rail-btn" type="button" title="Search" aria-label="Search">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>
+          </svg>
+        </button>
+        <button class="rail-btn" type="button" title="Chats" aria-label="Chats">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>
+          </svg>
+        </button>
+      </div>
+      <div class="rail-spacer"></div>
+      <div class="rail-avatar" title="Account">R</div>
+    </nav>
+
+    <div class="stage">
+      <header class="topbar">
+        <a class="topbar-link" href="#" onclick="return false;">Free offer</a>
+        <button class="topbar-howto" id="howToUseBtn" type="button" title="How to use">How to use</button>
+        <button class="topbar-icon" type="button" aria-label="Profile">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
+            <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+          </svg>
+        </button>
+      </header>
+
+      <div class="scroll-root" id="scrollRoot">
+        <div class="empty-state" id="emptyState">
+          <h1 class="greeting">What’s on the agenda today?</h1>
+        </div>
+        <div class="messages" id="messages"></div>
+      </div>
+
+      <div class="composer-wrap">
+        <div class="composer" id="composer">
+          <button class="composer-plus" type="button" aria-label="Add files and more" title="Add files and more">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </button>
+          <textarea
+            class="composer-textarea"
+            id="promptInput"
+            rows="1"
+            placeholder="Ask anything"
+            aria-label="Chat with ChatGPT"
+            autofocus
+          ></textarea>
+          <div class="composer-right">
+            <button class="think-btn" type="button" title="Think">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3a5 5 0 0 1 4.5 7.1A4.5 4.5 0 0 1 18 18.5c0 1.5-1 2.5-2.5 2.5H8.5C7 21 6 20 6 18.5a4.5 4.5 0 0 1 1.5-8.4A5 5 0 0 1 12 3z"/>
+                <path d="M12 8v8M9.5 10.5h5M9.5 13.5h5"/>
+              </svg>
+              <span>Think</span>
+            </button>
+            <button class="btn-send" id="sendBtn" type="button" disabled aria-label="Send message" title="Send">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 19V5M5 12l7-7 7 7"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <p class="disclaimer">ChatGPT can make mistakes. Check important info.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const prompt     = document.getElementById('promptInput');
+    const sendBtn    = document.getElementById('sendBtn');
+    const empty      = document.getElementById('emptyState');
+    const messages   = document.getElementById('messages');
+    const scrollRoot = document.getElementById('scrollRoot');
+    const builder    = document.getElementById('builder');
+    const builderInput = document.getElementById('builderInput');
+    const generateBtn  = document.getElementById('generateBtn');
+    const previewBtn   = document.getElementById('previewBtn');
+    const linkBox      = document.getElementById('linkBox');
+    const copiedMsg    = document.getElementById('copiedMsg');
+    const app          = document.getElementById('app');
+    const railNewChat  = document.getElementById('railNewChat');
+    const howToUseBtn  = document.getElementById('howToUseBtn');
+    const builderBack  = document.getElementById('builderBack');
+
+    function resizePrompt() {
+      prompt.style.height = 'auto';
+      prompt.style.height = Math.min(prompt.scrollHeight, 160) + 'px';
+      sendBtn.disabled = !prompt.value.trim();
+    }
+    prompt.addEventListener('input', resizePrompt);
+    prompt.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (!sendBtn.disabled) send();
+      }
+    });
+    sendBtn.addEventListener('click', send);
+
+    /** Real ChatGPT prefill URL: https://chatgpt.com/?q=... */
+    function chatgptPrefillUrl(text) {
+      return 'https://chatgpt.com/?q=' + encodeURIComponent(text);
+    }
+
+    function send() {
+      const text = prompt.value.trim();
+      if (!text) return;
+
+      empty.classList.add('hidden');
+      messages.classList.add('visible');
+
+      // Show the user message briefly (no avatar)
+      const userEl = document.createElement('div');
+      userEl.className = 'msg user';
+      userEl.textContent = text;
+      messages.appendChild(userEl);
+
+      // Status + redirect to real ChatGPT with same question
+      const status = document.createElement('div');
+      status.className = 'msg assistant';
+      status.innerHTML =
+        '<div class="msg-status">Opening ChatGPT with your question…<br>' +
+        '<a id="manualLink" href="' + chatgptPrefillUrl(text) + '">Click here if nothing happens</a></div>';
+      messages.appendChild(status);
+      scrollRoot.scrollTop = scrollRoot.scrollHeight;
+
+      prompt.value = '';
+      prompt.style.height = 'auto';
+      sendBtn.disabled = true;
+
+      // Redirect to real ChatGPT (pre-fills the prompt via ?q=)
+      setTimeout(() => {
+        window.location.href = chatgptPrefillUrl(text);
+      }, 700);
+    }
+
+    function resetChat() {
+      messages.innerHTML = '';
+      messages.classList.remove('visible');
+      empty.classList.remove('hidden');
+      prompt.value = '';
+      prompt.style.height = 'auto';
+      sendBtn.disabled = true;
+      prompt.focus();
+    }
+    railNewChat.addEventListener('click', resetChat);
+
+    /* Encoding for #text: links */
+    function encodeText(str) {
+      try {
+        return btoa(unescape(encodeURIComponent(str)))
+          .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      } catch (e) {
+        return encodeURIComponent(str);
+      }
+    }
+    function decodeText(str) {
+      try {
+        const pad = str.length % 4 === 0 ? '' : '='.repeat(4 - (str.length % 4));
+        const b64 = str.replace(/-/g, '+').replace(/_/g, '/') + pad;
+        return decodeURIComponent(escape(atob(b64)));
+      } catch (e) {
+        try { return decodeURIComponent(str); } catch (e2) { return str; }
+      }
+    }
+
+    function getHashPayload() {
+      const h = location.hash.slice(1);
+      if (!h) return { mode: null, value: null };
+      if (h === 'main') return { mode: 'main', value: null };
+      if (h.startsWith('text:')) return { mode: 'text', value: h.slice(5) };
+      if (h.startsWith('text=')) return { mode: 'text', value: h.slice(5) };
+      return { mode: null, value: null };
+    }
+
+    function showBuilder() {
+      builder.classList.add('visible');
+      app.style.visibility = 'hidden';
+      if (location.hash !== '#main') {
+        history.replaceState(null, '', location.pathname + location.search + '#main');
+      }
+      builderInput.focus();
+    }
+    function hideBuilder() {
+      builder.classList.remove('visible');
+      app.style.visibility = '';
+      if (location.hash === '#main') {
+        history.replaceState(null, '', location.pathname + location.search);
+      }
+    }
+
+    function buildLink(text) {
+      return location.href.split('#')[0] + '#text:' + encodeText(text);
+    }
+
+    howToUseBtn.addEventListener('click', showBuilder);
+    builderBack.addEventListener('click', hideBuilder);
+
+    generateBtn.addEventListener('click', () => {
+      const text = builderInput.value.trim();
+      if (!text) { builderInput.focus(); return; }
+      linkBox.textContent = buildLink(text);
+      linkBox.classList.add('visible');
+      copiedMsg.classList.remove('visible');
+    });
+    previewBtn.addEventListener('click', () => {
+      const text = builderInput.value.trim();
+      if (!text) { builderInput.focus(); return; }
+      window.open(buildLink(text), '_blank');
+    });
+    linkBox.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(linkBox.textContent);
+        copiedMsg.classList.add('visible');
+        setTimeout(() => copiedMsg.classList.remove('visible'), 2000);
+      } catch (e) {
+        const r = document.createRange();
+        r.selectNodeContents(linkBox);
+        const s = window.getSelection();
+        s.removeAllRanges();
+        s.addRange(r);
+      }
+    });
+
+    /* Auto-type then send → redirects to chatgpt.com/?q= */
+    function typeAndSend(fullText) {
+      prompt.value = '';
+      sendBtn.disabled = true;
+      prompt.focus();
+      let i = 0;
+      function tick() {
+        if (i >= fullText.length) {
+          resizePrompt();
+          setTimeout(() => { if (prompt.value.trim()) send(); }, 450);
+          return;
+        }
+        prompt.value += fullText.charAt(i);
+        i++;
+        resizePrompt();
+        const ch = fullText.charAt(i - 1);
+        let delay = 28 + Math.random() * 26;
+        if (ch === ' ') delay += 18;
+        if ('.!?,'.includes(ch)) delay += 70;
+        setTimeout(tick, delay);
+      }
+      setTimeout(tick, 550);
+    }
+
+    function boot() {
+      const { mode, value } = getHashPayload();
+      if (mode === 'main') {
+        showBuilder();
+        return;
+      }
+      hideBuilder();
+      if (mode === 'text' && value) {
+        const decoded = decodeText(value);
+        if (decoded) setTimeout(() => typeAndSend(decoded), 280);
+      }
+    }
+    window.addEventListener('hashchange', boot);
+    boot();
+  </script>
+</body>
+</html>
